@@ -6,7 +6,6 @@ from os import path, linesep
 from os.path import exists
 
 from kivy.core.window import Window
-from kivy.lang import Builder
 from kivy.metrics import dp
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.scrollview import ScrollView
@@ -26,11 +25,10 @@ from kivymd.uix.screen import MDScreen
 from kivymd.uix.snackbar import BaseSnackbar
 
 # for draw start
-from random import random
-from kivy.app import App
-from kivy.uix.widget import Widget
-from kivy.uix.button import Button
+import random
+from kivy.lang import Builder
 from kivy.graphics import Color, Ellipse, Line
+from kivy.uix.relativelayout import RelativeLayout
 # for draw end
 
 from kivy.base import EventLoop
@@ -155,15 +153,18 @@ class CustomTextInput(TextInput):
         self._set_unredo_insert(cindex, cindex + len_str, substring, from_undo)
 
 
-# TODO rename, tests etc.
-class MyPaintWidget(Widget):
+# https://www.youtube.com/watch?v=czwased48lQ&ab_channel=buildwithpython
+# https://github.com/attreyabhatt/Kivy-PaintApp/blob/master/main.py
+class Drawing(MDBoxLayout):
     def on_touch_down(self, touch):
-        color = (random(), 1, 1)
-        with self.canvas:
-            Color(*color, mode='hsv')
-            d = 30.
-            Ellipse(pos=(touch.x - d / 2, touch.y - d / 2), size=(d, d))
-            touch.ud['line'] = Line(points=(touch.x, touch.y))
+        colorR = random.randint(0, 255)
+        colorG = random.randint(0, 255)
+        colorB = random.randint(0, 255)
+        self.canvas.add(Color(rgb=(colorR / 255.0, colorG / 255.0, colorB / 255.0)))
+        d = 3
+        self.canvas.add(Ellipse(pos=(touch.x - d / 2, touch.y - d / 2), size=(d, d)))
+        touch.ud['line'] = Line(points=(touch.x, touch.y))
+        self.canvas.add(touch.ud['line'])
 
     def on_touch_move(self, touch):
         touch.ud['line'].points += [touch.x, touch.y]
@@ -243,6 +244,7 @@ class DrawingDialogContent(MDBoxLayout):
     # search_string_placeholder = StringProperty(None)
     # search_results_message = StringProperty(None)
     # execute_search = ObjectProperty(None)
+    # get_painter = ObjectProperty(None)
     save = ObjectProperty(None)
     cancel = ObjectProperty(None)
 
@@ -800,6 +802,10 @@ class NotesView(MDBoxLayout, MDScreen, Observer):
         print("saved")
 
     # TODO tests
+    def clear_canvas(self, obj):
+        self.painter.canvas.clear()
+
+    # TODO tests
     # https://kivy.org/doc/stable/tutorials/firstwidget.html
     def press_icon_add_drawing(self, *args):
         print(args)
@@ -809,6 +815,7 @@ class NotesView(MDBoxLayout, MDScreen, Observer):
             # search_switch_callback=self.search_switch_callback,
             # search_string_placeholder=self.last_searched_string,
             # search_results_message="",
+            # get_painter=self.get_painter,
             save=self.save_drawing,
             cancel=self.cancel_dialog,
         )
@@ -816,18 +823,6 @@ class NotesView(MDBoxLayout, MDScreen, Observer):
         self.dialog = MDDialog(title="Drawing:", type="custom", content_cls=content)
 
         self.dialog.open()
-
-        parent = Widget()
-        self.painter = MyPaintWidget()
-        clearbtn = Button(text='Clear')
-        clearbtn.bind(on_release=self.clear_canvas)
-        parent.add_widget(self.painter)
-        parent.add_widget(clearbtn)
-        return parent
-
-
-    def clear_canvas(self, obj):
-        self.painter.canvas.clear()
 
     def press_add_section(self, *args):
         content = AddSectionDialogContent(
