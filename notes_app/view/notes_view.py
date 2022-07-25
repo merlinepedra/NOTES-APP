@@ -9,6 +9,7 @@ from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.uix.scrollview import ScrollView
+from kivy.uix.widget import Widget
 from kivymd.theming import ThemableBehavior
 from kivymd.uix.boxlayout import MDBoxLayout
 from kivymd.uix.dialog import MDDialog
@@ -24,13 +25,8 @@ from kivymd.uix.menu import MDDropdownMenu
 from kivymd.uix.screen import MDScreen
 from kivymd.uix.snackbar import BaseSnackbar
 
-# for draw start
-import random
 from kivy.lang import Builder
 from kivy.graphics import Color, Ellipse, Line
-from kivy.uix.relativelayout import RelativeLayout
-# for draw end
-
 from kivy.base import EventLoop
 from kivy.uix.textinput import FL_IS_LINEBREAK
 
@@ -155,18 +151,26 @@ class CustomTextInput(TextInput):
 
 # https://www.youtube.com/watch?v=czwased48lQ&ab_channel=buildwithpython
 # https://github.com/attreyabhatt/Kivy-PaintApp/blob/master/main.py
-class Drawing(MDBoxLayout):
+class Drawing(Widget):
     def on_touch_down(self, touch):
-        colorR = random.randint(0, 255)
-        colorG = random.randint(0, 255)
-        colorB = random.randint(0, 255)
-        self.canvas.add(Color(rgb=(colorR / 255.0, colorG / 255.0, colorB / 255.0)))
+        # Ignore touch input that isn't within the bounds
+        if not self.collide_point(*touch.pos):
+            return
+
+        line_color_rgba = get_color_by_name(colors_list=AVAILABLE_COLORS, color_name="white").rgba_value
+
+        self.canvas.add(Color(rgb=(line_color_rgba[0], line_color_rgba[1], line_color_rgba[2])))
         d = 3
         self.canvas.add(Ellipse(pos=(touch.x - d / 2, touch.y - d / 2), size=(d, d)))
+
         touch.ud['line'] = Line(points=(touch.x, touch.y))
         self.canvas.add(touch.ud['line'])
 
     def on_touch_move(self, touch):
+        # Ignore touch input that isn't within the bounds
+        if not self.collide_point(*touch.pos):
+            return
+
         touch.ud['line'].points += [touch.x, touch.y]
 
 
@@ -237,14 +241,13 @@ class SearchDialogContent(MDBoxLayout):
     cancel = ObjectProperty(None)
 
 
-# TODO tests
 class DrawingDialogContent(MDBoxLayout):
     # get_search_switch_state = ObjectProperty(None)
     # search_switch_callback = ObjectProperty(None)
     # search_string_placeholder = StringProperty(None)
     # search_results_message = StringProperty(None)
     # execute_search = ObjectProperty(None)
-    # get_painter = ObjectProperty(None)
+    canvas_state = ObjectProperty(None)
     save = ObjectProperty(None)
     cancel = ObjectProperty(None)
 
@@ -298,6 +301,8 @@ class NotesView(MDBoxLayout, MDScreen, Observer):
         self.menu_settings = self.get_menu_settings()
         self.snackbar = None
         self.dialog = None
+
+        self.drawing_canvas = None
 
         self.manager_open = False
         self.file_manager = None
@@ -797,25 +802,30 @@ class NotesView(MDBoxLayout, MDScreen, Observer):
 
         self.dialog.open()
 
-    # TODO tests
-    def save_drawing(self):
-        print("saved")
+    # TODO
+    def save_drawing(self, *args):
+        print("saved", args)
+        self.drawing_canvas = args[0]
+        self.drawing_canvas.export_to_png(filename="temporary.png")
+        print(self.drawing_canvas, self.drawing_canvas.canvas, type(self.drawing_canvas))
 
-    # TODO tests
+    # TODO
     def clear_canvas(self, obj):
         self.painter.canvas.clear()
 
-    # TODO tests
+    # TODO
     # https://kivy.org/doc/stable/tutorials/firstwidget.html
     def press_icon_add_drawing(self, *args):
         print(args)
+
+        self.drawing_canvas = Drawing()
 
         content = DrawingDialogContent(
             # get_search_switch_state=self.get_search_switch_state,
             # search_switch_callback=self.search_switch_callback,
             # search_string_placeholder=self.last_searched_string,
             # search_results_message="",
-            # get_painter=self.get_painter,
+            canvas_state=self.drawing_canvas,
             save=self.save_drawing,
             cancel=self.cancel_dialog,
         )
